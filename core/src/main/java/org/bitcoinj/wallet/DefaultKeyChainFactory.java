@@ -16,7 +16,11 @@
 
 package org.bitcoinj.wallet;
 
+import java.util.List;
+
 import org.bitcoinj.crypto.*;
+
+import com.google.common.collect.ImmutableList;
 
 /**
  * Default factory for creating keychains while de-serializing.
@@ -33,6 +37,18 @@ public class DefaultKeyChainFactory implements KeyChainFactory {
     }
 
     @Override
+    public DeterministicKeyChain makeKeyChain(Protos.Key key, Protos.Key firstSubKey, DeterministicSeed seed, KeyCrypter crypter, boolean isMarried, String originalAccountPath) {
+        DeterministicKeyChain chain;
+        if (isMarried)
+            chain = new MarriedKeyChain(seed, crypter);
+        else {
+            List<ChildNumber> childNumber = HDUtils.parsePath(originalAccountPath);
+            chain = new DeterministicKeyChain(seed, crypter, ImmutableList.<ChildNumber>builder().addAll(childNumber).build());
+        }
+        return chain;
+    }
+
+    @Override
     public DeterministicKeyChain makeWatchingKeyChain(Protos.Key key, Protos.Key firstSubKey, DeterministicKey accountKey,
                                                       boolean isFollowingKey, boolean isMarried) throws UnreadableWalletException {
         if (!accountKey.getPath().equals(DeterministicKeyChain.ACCOUNT_ZERO_PATH))
@@ -42,7 +58,7 @@ public class DefaultKeyChainFactory implements KeyChainFactory {
         if (isMarried)
             chain = new MarriedKeyChain(accountKey);
         else
-            chain = new DeterministicKeyChain(accountKey, isFollowingKey);
+            chain = new DeterministicKeyChain(accountKey, isFollowingKey, accountKey.getPath());
         return chain;
     }
 }
